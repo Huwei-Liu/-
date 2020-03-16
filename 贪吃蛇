@@ -1,0 +1,214 @@
+#include <graphics.h>
+#include<stdio.h>
+#include<conio.h>				//_getch() _kbhit()(检查是否有见键盘输入)
+#include<easyx.h>
+#include<time.h>				//time()
+#define SPE  100					//蛇的速度 越小速度越快
+#define ROW 46
+#define COL 64
+enum game
+{
+	SPACE, WALL, SNAKE, FOOD//空地  墙  蛇  食物
+};
+int score = 0;
+int SnakeSize = 3;
+DWORD t1, t2;			//定义两个时间控制移动速度
+COORD snake[1024];				//蛇			typedef struct _COORD {SHORT X;SHORT Y;} COORD, *PCOORD;
+int map[ROW][COL];		//地图大小
+char SnakeDir = 'D';			//蛇的初始方向
+void ChangeMove();				//蛇的方向（改变）
+void move();					//蛇的移动
+void DrawMap();					//绘制地图
+void init();					//初始化
+void AddFood();					//添加食物
+int main()
+{
+	initgraph(640, 480);
+	init();
+			
+	while (1)
+	{		
+		t2 = GetTickCount();
+		DrawMap();
+		if (_kbhit())
+		{	
+			ChangeMove();
+			move();	
+			t2 = GetTickCount();
+			t1 = t2;
+		}
+		if (t2 - t1 > SPE)
+		{
+			move();
+			t1 = t2;
+		}	
+	}
+	getchar();
+	closegraph();
+	return 0;
+}
+void init()
+{
+	srand((unsigned)time(NULL));	//随机种子
+	memset(map, SPACE, sizeof(map));//初始化map数组为0即SPACE
+	//每一行的 第一个 和 最后一个 是墙
+	for (int i = 0; i < ROW; i++)
+	{
+		map[i][0] = map[i][COL - 1] = WALL;
+	}
+	//每一列的 第二个 和 倒数第二 个是墙
+	for (int j = 1; j < COL - 1; j++)
+	{
+		map[0][j] = map[ROW - 1][j] = WALL;
+	}
+	map[6][5]=map[6][4] = map[6][3] = SNAKE;
+	snake[0].X = 6;
+	snake[0].Y = 5;
+	snake[1].X = 6;
+	snake[1].Y = 4;
+	snake[2].X = 6;
+	snake[2].Y = 3;
+	AddFood();
+}
+void ChangeMove()
+{
+	switch (_getch())
+	{
+	case'A':
+	case'a':
+	case 75:
+		if (SnakeDir != 'D') SnakeDir = 'A';	//蛇不能后退
+		break;
+	case'D':
+	case'd':
+	case 77:
+		if (SnakeDir != 'A') SnakeDir = 'D';
+		break;
+	case'W':
+	case'w':
+	case 72:
+		if (SnakeDir != 'S') SnakeDir = 'W';
+		break;
+	case'S':
+	case's':
+	case 80:
+		if (SnakeDir != 'W') SnakeDir = 'S';
+		break;
+	case 32:
+		_getch();
+		break;
+	default:
+		break;
+	}
+}
+void move()
+{	
+	COORD next;		//蛇头的下一个位置
+	next.X = 0; next.Y = 0;
+	switch (SnakeDir)
+	{
+	case'A':
+		next.X = snake[0].X;
+		next.Y = snake[0].Y - 1;
+		break;
+	case'W':
+		next.X = snake[0].X - 1;
+		next.Y = snake[0].Y;
+		break;
+	case'D':
+		next.X = snake[0].X;
+		next.Y = snake[0].Y + 1;
+		break;
+	case'S':
+		next.X = snake[0].X + 1;
+		next.Y = snake[0].Y;
+		break;
+	default:
+		break;
+	}
+	switch (map[next.X][next.Y])
+	{	
+	case SPACE: 
+		map[snake[SnakeSize - 1].X][snake[SnakeSize - 1].Y] = SPACE;	// 删除蛇尾最后一个
+		for (int i = SnakeSize - 1; i > 0; i--)
+		{
+			snake[i] = snake[i - 1];
+			map[snake[i].X][snake[i].Y] = SNAKE;
+		}
+		snake[0] = next;
+		map[snake[0].X][snake[0].Y] = SNAKE;
+		break;
+	case FOOD:
+		SnakeSize++;	score++;					//蛇的长度加一,得分+1
+		for (int i = SnakeSize - 1; i > 0; i--)
+		{
+			snake[i] = snake[i - 1];
+			map[snake[i].X][snake[i].Y] = SNAKE;
+		}
+		snake[0] = next;
+		map[snake[0].X][snake[0].Y] = SNAKE;
+		AddFood();
+		break;
+	
+	case SNAKE:
+		MessageBox(GetHWnd(), "你太菜啦！！贪吃蛇都能输了来", "小辣鸡", MB_OK);
+		exit(0);
+		break;
+	case WALL:
+		MessageBox(GetHWnd(), "你太菜啦！！贪吃蛇都能输了来", "小辣鸡", MB_OK);
+		exit(0);
+		break;	
+	}
+}
+void DrawMap()
+{
+	BeginBatchDraw();
+	//setbkcolor(WHITE);				//设置背景颜色
+	settextcolor(RGB(238, 0, 0));
+	cleardevice();		//清屏
+	char arr[10],str[]="操作方式：按w a s d 或上下左右键控制蛇";		//保存成绩
+	sprintf_s(arr, "总分：%d", score);	//将成绩格式化输出到字符串arr中 
+	outtextxy(0, 0, arr);				//显示成绩
+	outtextxy(100, 0, str);
+	for (int y = 0; y < ROW; y++)		//y轴方向向下
+	{
+		for (int x = 0; x < COL; x++)	//x轴方向向右
+		{
+			switch (map[y][x])
+			{
+			case SPACE:
+				break;
+			case WALL:
+				setlinecolor(BLACK);
+				setfillcolor(BROWN);	//棕色
+				fillrectangle(x * 10, y * 10 + 20, x * 10 + 10, y * 10 + 30);
+				break;
+			case SNAKE:
+				setlinecolor(RGB(0, 245, 255));		//绿色 
+				setfillcolor(LIGHTMAGENTA);			//亮紫色
+				//setfillcolor(BROWN);
+				fillrectangle(x * 10, y * 10 + 20, x * 10 + 10, y * 10 + 30);
+				break;
+			case FOOD:
+				setlinecolor(RGB(0, 245, 255));		//绿色 
+				setfillcolor(RED);			//亮紫色
+				//setfillcolor(YELLOW);
+				fillrectangle(x * 10, y * 10 + 20, x * 10 + 10, y * 10 + 30);
+				break;
+			default:
+				break;
+			}
+		}
+	}
+	EndBatchDraw();
+}
+void AddFood()
+{	
+	int x, y;
+	do {
+		x = rand() % (ROW - 1) ;
+		y = rand() % (COL - 1) ;
+		
+	} while (map[x][y] != SPACE);
+	map[x][y] = FOOD;
+}
